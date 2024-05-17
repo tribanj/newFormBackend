@@ -155,6 +155,7 @@ const universitySchema = new mongoose.Schema({
   highestPackage: { type: String, required: true },
   averagePackage: { type: String, required: true },
   ranking: { type: String, required: true },
+  aproval: { type: String, required: true },
   courseFeeDetails: { type: String, required: true },
   photos: { type: String, required: true },
   prospectus: { type: String, required: true },
