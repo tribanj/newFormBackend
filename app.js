@@ -104,21 +104,22 @@ const express = require("express");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const cors = require("cors");
-const app = express();
+const dotenv = require("dotenv");
 
-const PORT = process.env.PORT || 3001; // Allow setting the port via environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
+app.use(express.json());
 
 // MongoDB connection
 mongoose
-  .connect(
-    "mongodb+srv://tribhuwanja:9doa4xtYeWAvQpAn@cluster0.ijgu1jf.mongodb.net/FindMyCollege",
-    {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }
-  )
+  .connect(process.env.Db_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log("Database connected successfully");
   })
@@ -126,6 +127,7 @@ mongoose
     console.error("Error connecting to the database: " + error);
   });
 
+// Multer setup for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -138,10 +140,10 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Define a MongoDB schema and model
-const itemSchema = new mongoose.Schema({
+const universitySchema = new mongoose.Schema({
   name: String,
   location: String,
-  founder: String,
+  Founder: String,
   viceChancellor: String,
   chancellor: String,
   achievements: String,
@@ -156,45 +158,75 @@ const itemSchema = new mongoose.Schema({
   prospectusUrl: String,
 });
 
-const Item = mongoose.model("Item", itemSchema);
+const University = mongoose.model("University", universitySchema);
 
-app.use(express.json());
+// Routes
+app.post(
+  "/api/universities",
+  upload.fields([
+    { name: "courseFeeDetails", maxCount: 1 },
+    { name: "photos", maxCount: 10 },
+    { name: "prospectus", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const {
+        name,
+        location,
+        Founder,
+        viceChancellor,
+        chancellor,
+        achievements,
+        about,
+        examsAccepted,
+        highestPackage,
+        averagePackage,
+        ranking,
+        approvalRecognition,
+      } = req.body;
 
-app.post("/api/items", upload.fields([
-  { name: 'photos', maxCount: 10 },
-  { name: 'courseFeeDetails', maxCount: 1 },
-  { name: 'prospectus', maxCount: 1 }
-]), async (req, res) => {
-  try {
-    const newItem = new Item({
-      name: req.body.name,
-      location: req.body.location,
-      founder: req.body.Founder,
-      viceChancellor: req.body.viceChancellor,
-      chancellor: req.body.chancellor,
-      achievements: req.body.achievements,
-      about: req.body.about,
-      examsAccepted: req.body.examsAccepted,
-      highestPackage: req.body.highestPackage,
-      averagePackage: req.body.averagePackage,
-      ranking: req.body.ranking,
-      approvalRecognition: req.body.approvalRecognition,
-      courseFeeDetailsUrl: req.files.courseFeeDetails ? req.files.courseFeeDetails[0].path : null,
-      photosUrls: req.files.photos ? req.files.photos.map(file => file.path) : [],
-      prospectusUrl: req.files.prospectus ? req.files.prospectus[0].path : null,
-    });
+      const courseFeeDetailsUrl = req.files.courseFeeDetails
+        ? req.files.courseFeeDetails[0].path
+        : null;
+      const photosUrls = req.files.photos
+        ? req.files.photos.map((file) => file.path)
+        : [];
+      const prospectusUrl = req.files.prospectus
+        ? req.files.prospectus[0].path
+        : null;
 
-    await newItem.save();
-    res.json(newItem);
-  } catch (error) {
-    console.error("An error occurred:", error);
-    res.status(500).json({ error: "An error occurred while saving the item." });
+      const newUniversity = new University({
+        name,
+        location,
+        Founder,
+        viceChancellor,
+        chancellor,
+        achievements,
+        about,
+        examsAccepted,
+        highestPackage,
+        averagePackage,
+        ranking,
+        approvalRecognition,
+        courseFeeDetailsUrl,
+        photosUrls,
+        prospectusUrl,
+      });
+
+      await newUniversity.save();
+      res.json(newUniversity);
+    } catch (error) {
+      console.error("An error occurred:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while saving the university data." });
+    }
   }
-});
+);
 
-app.get("/api/alldata", async (req, res) => {
+app.get("/api/universities", async (req, res) => {
   try {
-    const data = await Item.find().lean();
+    const data = await University.find().lean();
     res.json(data);
   } catch (error) {
     console.error("An error occurred:", error);
@@ -205,12 +237,10 @@ app.get("/api/alldata", async (req, res) => {
 // Global error handler for unhandled exceptions and rejections
 process.on("unhandledRejection", (error) => {
   console.error("Unhandled Promise Rejection:", error);
-  // Optionally, you can add code here to gracefully handle unhandled rejections
 });
 
 process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
-  // Optionally, you can add code here to gracefully handle uncaught exceptions
 });
 
 app.listen(PORT, () => {
