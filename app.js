@@ -106,7 +106,7 @@ const multer = require("multer");
 const cors = require("cors");
 const app = express();
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001; // Allow setting the port via environment variables
 
 app.use(cors());
 
@@ -137,67 +137,80 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-const uploadMultiple = upload.fields([
-  { name: 'courseFeeDetails', maxCount: 1 },
-  { name: 'photos', maxCount: 1 },
-  { name: 'prospectus', maxCount: 1 },
-]);
-
-const universitySchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  location: { type: String, required: true },
-  owner: { type: String, required: true },
-  viceChancellor: { type: String, required: true },
-  chancellor: { type: String, required: true },
-  achievements: { type: String, required: true },
-  about: { type: String, required: true },
-  examsAccepted: { type: String, required: true },
-  highestPackage: { type: String, required: true },
-  averagePackage: { type: String, required: true },
-  ranking: { type: String, required: true },
-  aproval: { type: String, required: true },
-  courseFeeDetails: { type: String, required: true },
-  photos: { type: String, required: true },
-  prospectus: { type: String, required: true },
+// Define a MongoDB schema and model
+const itemSchema = new mongoose.Schema({
+  name: String,
+  location: String,
+  founder: String,
+  viceChancellor: String,
+  chancellor: String,
+  achievements: String,
+  about: String,
+  examsAccepted: String,
+  highestPackage: String,
+  averagePackage: String,
+  ranking: String,
+  approvalRecognition: String,
+  courseFeeDetailsUrl: String,
+  photosUrls: [String],
+  prospectusUrl: String,
 });
 
-const University = mongoose.model("University", universitySchema);
+const Item = mongoose.model("Item", itemSchema);
 
 app.use(express.json());
 
-app.post("/api/universities", uploadMultiple, async (req, res) => {
+app.post("/api/items", upload.fields([
+  { name: 'photos', maxCount: 10 },
+  { name: 'courseFeeDetails', maxCount: 1 },
+  { name: 'prospectus', maxCount: 1 }
+]), async (req, res) => {
   try {
-    const newUniversity = new University({
-      ...req.body,
-      courseFeeDetails: req.files['courseFeeDetails'][0].path,
-      photos: req.files['photos'][0].path,
-      prospectus: req.files['prospectus'][0].path,
+    const newItem = new Item({
+      name: req.body.name,
+      location: req.body.location,
+      founder: req.body.Founder,
+      viceChancellor: req.body.viceChancellor,
+      chancellor: req.body.chancellor,
+      achievements: req.body.achievements,
+      about: req.body.about,
+      examsAccepted: req.body.examsAccepted,
+      highestPackage: req.body.highestPackage,
+      averagePackage: req.body.averagePackage,
+      ranking: req.body.ranking,
+      approvalRecognition: req.body.approvalRecognition,
+      courseFeeDetailsUrl: req.files.courseFeeDetails ? req.files.courseFeeDetails[0].path : null,
+      photosUrls: req.files.photos ? req.files.photos.map(file => file.path) : [],
+      prospectusUrl: req.files.prospectus ? req.files.prospectus[0].path : null,
     });
 
-    await newUniversity.save();
-    res.json(newUniversity);
+    await newItem.save();
+    res.json(newItem);
   } catch (error) {
     console.error("An error occurred:", error);
-    res.status(500).json({ error: "An error occurred while saving the university data." });
+    res.status(500).json({ error: "An error occurred while saving the item." });
   }
 });
 
-app.get("/api/universities", async (req, res) => {
+app.get("/api/alldata", async (req, res) => {
   try {
-    const universities = await University.find().lean();
-    res.json(universities);
+    const data = await Item.find().lean();
+    res.json(data);
   } catch (error) {
     console.error("An error occurred:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
+// Global error handler for unhandled exceptions and rejections
 process.on("unhandledRejection", (error) => {
   console.error("Unhandled Promise Rejection:", error);
+  // Optionally, you can add code here to gracefully handle unhandled rejections
 });
 
 process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
+  // Optionally, you can add code here to gracefully handle uncaught exceptions
 });
 
 app.listen(PORT, () => {
